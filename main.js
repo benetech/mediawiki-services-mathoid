@@ -181,7 +181,7 @@ page.onCallback = function(data) {
         log = src.substr(0, 30) + '.. ' +
             src.length + 'B query, error: ' + svg_or_error[0] + duration_msg;
     }
-  if(query.format == 'json'){
+  if(query.format == 'json' || query.format == 'jsonp'){
       if ( validRequest ) {
           resp.statusCode = 200;
           //Temporary fix for BUG 62921
@@ -190,12 +190,18 @@ page.onCallback = function(data) {
               src = 'mathml';
           }
           //End of fix
-          out = JSON.stringify({input:src,
+		  if (query.callback != null) {
+		  	  out = "onMathoidCallback(";
+		  }
+          out = out + JSON.stringify({input:src,
               svg:svg_or_error,
               mml:mml,
               log:log,
               success:success});
-          resp.setHeader('Content-Type', 'application/json');
+		  if (query.callback != null) {
+		      out = out + ")";
+		  }
+          resp.setHeader('Content-Type', 'application/' + query.format);
           resp.setHeader('Content-Length', utf8_strlen(out).toString() );
           resp.write(out);
       } else {
@@ -211,20 +217,20 @@ page.onCallback = function(data) {
           phantom.exit(1);
       }
   } else {
-  if ((typeof svg_or_error) === 'string') {
-    resp.statusCode = 200;
-    resp.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
-    resp.setHeader("Content-Length", utf8_strlen(svg_or_error));
-    resp.write(svg_or_error);
-    console.log(log);
-  }
-  else {
-    resp.statusCode = 400;    // bad request
-    resp.write(svg_or_error[0]);
-    console.log(num, log);
+      if ((typeof svg_or_error) === 'string') {
+          resp.statusCode = 200;
+          resp.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+          resp.setHeader("Content-Length", utf8_strlen(svg_or_error));
+          resp.write(svg_or_error);
+          console.log(log);
+      }
+      else {
+          resp.statusCode = 400;    // bad request
+          resp.write(svg_or_error[0]);
+          console.log(num, log);
+      }
   }
   resp.close();
-  }
   delete(activeRequests[num]);
 
   if (!(--requests_to_serve)) {
@@ -247,7 +253,8 @@ function parse_request(req) {
     num: request_num++,
     type: 'tex',
     width: null,
-    format: 'svg' //possible svg or json
+    format: 'svg', //possible svg or json
+	callback: null
   };
 
   if (debug) {
@@ -328,10 +335,8 @@ function parse_request(req) {
     else if (key == 'format') {
         query.format = val;
     }
-    else {
-      query.status_code = 400;  // bad request
-      query.error = "Unrecognized parameter name: " + key;
-      return query;
+	else if (key == 'callback') {
+        query.callback = val;
     }
   }
   if (!query.q) {   // no source math
