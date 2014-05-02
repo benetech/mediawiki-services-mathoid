@@ -22,6 +22,30 @@ window.engine = (new (function() {
         MathJax.Callback(callback)(mml,success);
     }
 
+	//Wait for function so we can let ChromeVox finish up.
+  	function waitFor(testFx, onReady, timeOutMillis) {
+	    var maxtimeOutMillis = timeOutMillis ? timeOutMillis : 5000, //< Default Max Timout is 5s
+	        start = new Date().getTime(),
+	        condition = false,
+	        interval = setInterval(function () {
+	            if ((new Date().getTime() - start < maxtimeOutMillis) && !condition) {
+	                // If not time-out yet and condition not yet fulfilled
+	                condition = (typeof (testFx) === "string" ? eval(testFx) : testFx()); //< defensive code
+	            } else {
+	                if (!condition) {
+	                    typeof (onReady) === "string" ? eval(onReady) : onReady();
+	                    clearInterval(interval);
+	                } else {
+	                    // Condition fulfilled (timeout and/or condition is 'true')
+	                    console.log("'waitFor()' finished in " + (new Date().getTime() - start) + "ms.");
+	                    typeof (onReady) === "string" ? eval(onReady) : onReady(); //< Do what it's supposed to do once the condition is fulfilled
+	                    clearInterval(interval); //< Stop this interval
+	                }
+	            }
+	        }, 500); //< repeat check every 500ms
+	};
+	
+
   // bind helper.
   this.bind = function(method) {
     var engine = this;
@@ -109,6 +133,7 @@ window.engine = (new (function() {
   // element, instead of a string, will be a nested array with
   // one string element giving the error message.
   this.process = function(query, cb) {
+	
     // For debugging, the console doesn't work from here, but you can return dummy
     // data, as follows.  It will show up in the browser instead of the real results.
     //cb([query.num, query.q, ["debug message"]]);
@@ -136,6 +161,8 @@ window.engine = (new (function() {
       else {
         div.setAttribute('style', 'width: ' + width + 'px');
       }
+	
+	  
 
       // Possibilities:
       // - if q and width are the same as last time, no need to Rerender
@@ -151,30 +178,40 @@ window.engine = (new (function() {
       }
       t.last_q = q;
       t.last_width = width;
-
+	
+	  this.Q.Push(this.bind(function() {
+		$("#renderedMML").find("math").remove();
+		$("#renderedMML").append(jax.root.toMathML(''));
+	  }));
+	  
+	  this.Q.Push(this.bind(function(){
+	  	updateAltText();
+	  }));
+	
       this.Q.Push(this.bind(function() {
         var svg_elem = div.getElementsByTagName("svg")[0];
         var ret = null;
         if (!svg_elem) {
           ret = ['MathJax error'];
-          cb([query, ret, '', false]);
+          cb([query, ret, '', '', false]);
         } else {
             ret = this._merge(svg_elem.cloneNode(true));
-            toMathML(jax,function (mml,success) {
-                cb([query, ret, mml, success]);
-            })
+			//before we finish up, let's try to see if we got any alt text.
+			waitFor(
+					function () {
+		            	return document.getElementById('altText').innerHTML.length > 0;
+			         },
+			         function () {
+			         	toMathML(jax,function (mml,success) {
+							//get altText and then clean it up right away.
+							var altText = document.getElementById("altText").innerHTML;
+							document.getElementById("altText").innerHTML = '';
+							cb([query, ret, mml, altText, success]);
+							
+			            });
+			         }, 30000);
+            
         }
-          //This does not work (for the WMF setup)
-/**        else {
-          var texts = svg_elem.getElementsByTagName("text");
-          for (var i = 0; i < texts.length; ++i) {
-            if (this._text_is_error(texts[i])) {
-              ret = [texts[i].textContent];
-              break;
-            }
-          }
-        }*/
-;
       }));
     }
   };

@@ -164,6 +164,7 @@ page.onCallback = function(data) {
       src = query.q,
       svg_or_error = data[1],
       mml = data[2],
+      altText = data[3],
       record = activeRequests[num],
       resp = record[0],
       start_time = record[1],
@@ -171,7 +172,7 @@ page.onCallback = function(data) {
       duration_msg = ', took ' + duration + 'ms.',
       log ,
       validRequest = false,
-      success = data[3];
+      success = data[4];
     if( (typeof svg_or_error) === 'string'){
         validRequest = true;
         log = num + ': ' + src.substr(0, 30) + '.. ' +
@@ -189,16 +190,18 @@ page.onCallback = function(data) {
               mml = '';
               src = 'mathml';
           }
+		  var out = "";
           //End of fix
-		  if (query.callback != null) {
+		  if (query.format == 'jsonp') {
 		  	  out = "onMathoidCallback(";
 		  }
           out = out + JSON.stringify({input:src,
               svg:svg_or_error,
               mml:mml,
+			  altText:altText,
               log:log,
               success:success});
-		  if (query.callback != null) {
+		  if (query.format == 'jsonp') {
 		      out = out + ")";
 		  }
           resp.setHeader('Content-Type', 'application/' + query.format);
@@ -209,6 +212,7 @@ page.onCallback = function(data) {
           out = JSON.stringify({input:src,
               err:svg_or_error[0],
               mml:mml,
+			  altText:altText,
               log:log,
               success:success});
           //out = JSON.stringify({err:data[1][0],svg:data[1],mml:data[2],'log':log,'sucess':false});
