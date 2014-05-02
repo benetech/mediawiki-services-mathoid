@@ -164,6 +164,7 @@ page.onCallback = function(data) {
       src = query.q,
       svg_or_error = data[1],
       mml = data[2],
+      altText = data[3],
       record = activeRequests[num],
       resp = record[0],
       start_time = record[1],
@@ -171,7 +172,7 @@ page.onCallback = function(data) {
       duration_msg = ', took ' + duration + 'ms.',
       log ,
       validRequest = false,
-      success = data[3];
+      success = data[4];
     if( (typeof svg_or_error) === 'string'){
         validRequest = true;
         log = num + ': ' + src.substr(0, 30) + '.. ' +
@@ -181,7 +182,7 @@ page.onCallback = function(data) {
         log = src.substr(0, 30) + '.. ' +
             src.length + 'B query, error: ' + svg_or_error[0] + duration_msg;
     }
-  if(query.format == 'json'){
+  if(query.format == 'json' || query.format == 'jsonp'){
       if ( validRequest ) {
           resp.statusCode = 200;
           //Temporary fix for BUG 62921
@@ -189,13 +190,21 @@ page.onCallback = function(data) {
               mml = '';
               src = 'mathml';
           }
+		  var out = "";
           //End of fix
-          out = JSON.stringify({input:src,
+		  if (query.format == 'jsonp') {
+		  	  out = "onMathoidCallback(";
+		  }
+          out = out + JSON.stringify({input:src,
               svg:svg_or_error,
               mml:mml,
+			  altText:altText,
               log:log,
               success:success});
-          resp.setHeader('Content-Type', 'application/json');
+		  if (query.format == 'jsonp') {
+		      out = out + ")";
+		  }
+          resp.setHeader('Content-Type', 'application/' + query.format);
           resp.setHeader('Content-Length', utf8_strlen(out).toString() );
           resp.write(out);
       } else {
@@ -203,6 +212,7 @@ page.onCallback = function(data) {
           out = JSON.stringify({input:src,
               err:svg_or_error[0],
               mml:mml,
+			  altText:altText,
               log:log,
               success:success});
           //out = JSON.stringify({err:data[1][0],svg:data[1],mml:data[2],'log':log,'sucess':false});
@@ -211,20 +221,20 @@ page.onCallback = function(data) {
           phantom.exit(1);
       }
   } else {
-  if ((typeof svg_or_error) === 'string') {
-    resp.statusCode = 200;
-    resp.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
-    resp.setHeader("Content-Length", utf8_strlen(svg_or_error));
-    resp.write(svg_or_error);
-    console.log(log);
-  }
-  else {
-    resp.statusCode = 400;    // bad request
-    resp.write(svg_or_error[0]);
-    console.log(num, log);
+      if ((typeof svg_or_error) === 'string') {
+          resp.statusCode = 200;
+          resp.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+          resp.setHeader("Content-Length", utf8_strlen(svg_or_error));
+          resp.write(svg_or_error);
+          console.log(log);
+      }
+      else {
+          resp.statusCode = 400;    // bad request
+          resp.write(svg_or_error[0]);
+          console.log(num, log);
+      }
   }
   resp.close();
-  }
   delete(activeRequests[num]);
 
   if (!(--requests_to_serve)) {
@@ -247,7 +257,8 @@ function parse_request(req) {
     num: request_num++,
     type: 'tex',
     width: null,
-    format: 'svg' //possible svg or json
+    format: 'svg', //possible svg or json
+	callback: null
   };
 
   if (debug) {
@@ -328,10 +339,8 @@ function parse_request(req) {
     else if (key == 'format') {
         query.format = val;
     }
-    else {
-      query.status_code = 400;  // bad request
-      query.error = "Unrecognized parameter name: " + key;
-      return query;
+	else if (key == 'callback') {
+        query.callback = val;
     }
   }
   if (!query.q) {   // no source math
