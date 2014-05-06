@@ -11,6 +11,19 @@ Installation
 ------------
 see http://formulasearchengine.com/mathoid
 
+Installation For Developers Using Vagrant
+-----------------------------------------
+
+- Install Vagrant and VirtualBox. See http://docs.vagrantup.com/v2/getting-started/index.html for installation instructions.
+```sh
+git clone https://github.com/benetech/mediawiki-services-mathoid yourProjectName
+cd yourProjectName
+vagrant up
+vagrant ssh 
+cd /vagrant
+phantomjs main.j
+```
+
 
 API Description
 ---------------
