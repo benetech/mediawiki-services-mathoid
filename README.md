@@ -21,6 +21,7 @@ cd yourProjectName
 vagrant up
 vagrant ssh 
 cd /vagrant
+sudo apt-get install libfreetype6 libfontconfig
 phantomjs main.js
 ```
 
