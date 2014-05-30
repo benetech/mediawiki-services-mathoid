@@ -21,7 +21,7 @@ cd yourProjectName
 vagrant up
 vagrant ssh 
 cd /vagrant
-phantomjs main.j
+phantomjs main.js
 ```
 
 
