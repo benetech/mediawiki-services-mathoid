@@ -15,6 +15,7 @@ Installation For Developers Using Vagrant
 -----------------------------------------
 
 - Install Vagrant and VirtualBox. See http://docs.vagrantup.com/v2/getting-started/index.html for installation instructions.
+- Make sure you have Ruby 1.9 or above
 ```sh
 git clone https://github.com/benetech/mediawiki-services-mathoid yourProjectName
 cd yourProjectName
