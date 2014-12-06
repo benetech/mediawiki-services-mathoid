@@ -6,22 +6,6 @@ window.engine = (new (function() {
   this.mml = null;
   this.buffer = [];
 
-    //jax to MathML
-    function toMathML(jax,callback) {
-        var mml,
-            success = false;
-        try {
-            mml = jax.root.toMathML('');
-            if( mml.indexOf('<mtext mathcolor="red">') == -1 ){
-                success = true;
-            }
-        } catch(err) {
-            if (!err.restart) {throw err;} // an actual error
-            return MathJax.Callback.After([toMathML,jax,callback],err.restart);
-        }
-        MathJax.Callback(callback)(mml,success);
-    }
-
 	//Wait for function so we can let ChromeVox finish up.
   	function waitFor(testFx, onReady, timeOutMillis) {
 	    var maxtimeOutMillis = timeOutMillis ? timeOutMillis : 5000, //< Default Max Timout is 5s
@@ -202,13 +186,12 @@ window.engine = (new (function() {
 		            	return document.getElementById('altText').innerHTML.length > 0;
 			         },
 			         function () {
-			         	toMathML(jax,function (mml,success) {
+							//get mml extracted earlier.
+							var mml = document.getElementById("renderedMML").innerHTML;
 							//get altText and then clean it up right away.
 							var altText = document.getElementById("altText").innerHTML;
 							document.getElementById("altText").innerHTML = '';
 							cb([query, ret, mml, altText, success]);
-							
-			            });
 			         }, 30000);
             
         }
